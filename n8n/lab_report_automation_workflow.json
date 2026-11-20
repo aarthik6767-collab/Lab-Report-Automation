@@ -1,0 +1,20 @@
+{
+  "name": "Lab Report Automation - Report Ready",
+  "nodes": [
+    {"parameters":{"httpMethod":"POST","path":"lab-report-ready","responseMode":"onReceived","options":{}},"id":"1","name":"Report Ready Webhook","type":"n8n-nodes-base.webhook","typeVersion":2,"position":[240,300],"webhookId":"lab-report-ready"},
+    {"parameters":{"method":"POST","url":"=https://graph.facebook.com/v20.0/{{$env.WA_PHONE_NUMBER_ID}}/messages","sendHeaders":true,"headerParameters":{"parameters":[{"name":"Authorization","value":"=Bearer {{$env.WA_ACCESS_TOKEN}}"},{"name":"Content-Type","value":"application/json"}]},"sendBody":true,"specifyBody":"json","jsonBody":"={{ JSON.stringify({messaging_product:'whatsapp',to:$json.body.patient_phone,type:'template',template:{name:'report_ready',language:{code:'en'},components:[{type:'body',parameters:[{type:'text',text:$json.body.patient_name},{type:'text',text:$json.body.report_type},{type:'text',text:$json.body.secure_view_link}]}]}}) }}","options":{}},"id":"2","name":"Send WhatsApp Report Ready","type":"n8n-nodes-base.httpRequest","typeVersion":4.2,"position":[500,300]},
+    {"parameters":{"conditions":{"options":{"caseSensitive":true,"leftValue":"","typeValidation":"strict","version":2},"conditions":[{"id":"critical","leftValue":"={{ $('Report Ready Webhook').item.json.body.is_critical }}","rightValue":true,"operator":{"type":"boolean","operation":"true","singleValue":true}}],"combinator":"and"},"options":{}},"id":"3","name":"Is Critical?","type":"n8n-nodes-base.if","typeVersion":2.2,"position":[760,300]},
+    {"parameters":{"fromEmail":"={{$env.ALERT_FROM_EMAIL}}","toEmail":"={{$env.ADMIN_EMAIL}}","subject":"URGENT: Critical lab report ready","emailFormat":"text","text":"=A report was marked critical by authorized staff. Patient: {{ $('Report Ready Webhook').item.json.body.patient_name }}. Report type: {{ $('Report Ready Webhook').item.json.body.report_type }}. Please review in the approved hospital system."},"id":"4","name":"Email Doctor Admin Alert","type":"n8n-nodes-base.emailSend","typeVersion":2.1,"position":[1020,180]},
+    {"parameters":{"method":"POST","url":"={{$env.VOICE_API_BASE_URL}}/outbound-call","sendHeaders":true,"headerParameters":{"parameters":[{"name":"Authorization","value":"=Bearer {{$env.VOICE_API_KEY}}"},{"name":"Content-Type","value":"application/json"}]},"sendBody":true,"specifyBody":"json","jsonBody":"={{ JSON.stringify({phone:$('Report Ready Webhook').item.json.body.patient_phone,patient_name:$('Report Ready Webhook').item.json.body.patient_name,event:'critical_lab_report_alert',report_type:$('Report Ready Webhook').item.json.body.report_type,instruction:'Please contact the hospital immediately. Do not provide diagnosis or treatment advice.'}) }}","options":{}},"id":"5","name":"Trigger Urgent Voice Call","type":"n8n-nodes-base.httpRequest","typeVersion":4.2,"position":[1020,420]}
+  ],
+  "connections": {
+    "Report Ready Webhook":{"main":[[{"node":"Send WhatsApp Report Ready","type":"main","index":0}]]},
+    "Send WhatsApp Report Ready":{"main":[[{"node":"Is Critical?","type":"main","index":0}]]},
+    "Is Critical?":{"main":[[{"node":"Email Doctor Admin Alert","type":"main","index":0},{"node":"Trigger Urgent Voice Call","type":"main","index":0}],[]]}
+  },
+  "active": false,
+  "settings":{"executionOrder":"v1","timezone":"Asia/Kolkata"},
+  "versionId":"1",
+  "meta":{"templateCredsSetupCompleted":false},
+  "tags":[]
+}
